@@ -1,0 +1,49 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <Wire.h>
+#include <MPU6050.h>
+
+const char* ssid = "WiFi-Nome";
+const char* password = "WiFi-Senha";
+const char* mqtt_server = "broker.mqtt-dashboard.com";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+MPU6050 mpu;
+
+void setup_wifi() {
+  delay(10);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  Wire.begin();
+  mpu.initialize();
+}
+
+void loop() {
+  if (!client.connected()) {
+    while (!client.connected()) {
+      client.connect("ConectBallClient");
+    }
+  }
+  client.loop();
+
+  int16_t ax, ay, az;
+  mpu.getAcceleration(&ax, &ay, &az);
+
+  float velocidade = sqrt(pow(ax, 2) + pow(ay, 2) + pow(az, 2)) / 1000.0;
+
+  char msg[50];
+  dtostrf(velocidade, 6, 2, msg);
+
+  client.publish("conectball/velocidade", msg);
+
+  delay(1000);
+}
