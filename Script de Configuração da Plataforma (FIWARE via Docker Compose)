@@ -1,0 +1,57 @@
+
+
+Arquivo: docker-compose.yml
+
+version: "3.7"
+services:
+
+  # Broker MQTT
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    restart: always
+
+  # Orion Context Broker
+  orion:
+    image: fiware/orion
+    container_name: fiware-orion
+    ports:
+      - "1026:1026"
+    command: -dbhost mongo-db
+    depends_on:
+      - mongo-db
+
+  # MongoDB (banco histórico)
+  mongo-db:
+    image: mongo:4.4
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # IoT Agent MQTT
+  iot-agent:
+    image: fiware/iotagent-json
+    container_name: iot-agent
+    depends_on:
+      - orion
+      - mosquitto
+    ports:
+      - "4041:4041"
+    environment:
+      - IOTA_CB_HOST=orion
+      - IOTA_CB_PORT=1026
+      - IOTA_NORTH_PORT=4041
+      - IOTA_REGISTRY_TYPE=mongodb
+      - IOTA_LOG_LEVEL=DEBUG
+      - IOTA_TIMESTAMP=true
+      - IOTA_MQTT_HOST=mosquitto
+      - IOTA_MQTT_PORT=1883
+      - IOTA_MONGO_HOST=mongo-db
+      - IOTA_MONGO_PORT=27017
+
+volumes:
+  mongo_data:
